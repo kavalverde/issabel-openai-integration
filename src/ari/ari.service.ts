@@ -8,9 +8,6 @@ import { ConfigService } from '@nestjs/config';
 import * as AriClient from 'ari-client';
 import { AriChannel, AriCallEvent } from './interfaces/ari.interface';
 import { Subject } from 'rxjs';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-const execAsync = promisify(exec);
 
 @Injectable()
 export class AriService implements OnModuleInit, OnModuleDestroy {
@@ -155,17 +152,6 @@ export class AriService implements OnModuleInit, OnModuleDestroy {
       });
     } catch (error) {
       this.logger.error(`Error al reproducir audio: ${error.message}`);
-      throw error;
-    }
-  }
-
-  async playAudioWithAsterisk(channelId: string, filePath: string): Promise<void> {
-    try {
-      await execAsync(`asterisk -rx "channel request hangup ${channelId}"`);
-      await execAsync(`asterisk -rx "channel originate Local/5000@from-internal extension ${filePath} 1"`);
-      console.log(`Audio reproducido usando asterisk CLI: ${filePath}`);
-    } catch (error) {
-      console.error('Error al reproducir audio:', error);
       throw error;
     }
   }
