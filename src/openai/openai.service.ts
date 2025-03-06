@@ -161,7 +161,7 @@ export class OpenaiService {
   async processConversationExample(): Promise<string> {
     try {
      
-      /* 
+      
       // 2. Generar respuesta usando GPT
       const completion = await this.generateChatCompletion({
         messages: [
@@ -184,7 +184,7 @@ export class OpenaiService {
       });
       console.log(speech.audioFilePath);
       
-      return speech.audioFilePath;  */
+      return speech.audioFilePath; 
       return "/var/www/issabel-openai-integration/temp/tts-1741284202139.wav";
     } catch (error) {
       this.logger.error(`Error en el procesamiento de la conversación: ${error.message}`);
