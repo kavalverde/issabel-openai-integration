@@ -136,9 +136,15 @@ export class AriService implements OnModuleInit, OnModuleDestroy {
   // Método para reproducir audio en el canal
   async playAudio(channelId: string, audioFile: string): Promise<void> {
     try {
+      const fileName = audioFile.split('/').pop();
+      const audioUrl = `http://localhost:3000/audio/${fileName}`;
+
+      this.logger.log(`Reproduciendo respuesta de OpenAI: ${audioUrl}`);
+
+
       const playback = await this.client.channels.play({
         channelId,
-        media: `sound:${audioFile}`,
+        media: audioUrl,
       });
 
       this.logger.log(`Reproduciendo audio: ${audioFile}`);
