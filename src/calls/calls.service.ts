@@ -118,8 +118,8 @@ export class CallsService implements OnModuleInit, CallSessionRepository {
       
       // Procesar la grabación con OpenAI
       const recordingPath = path.join(this.recordingsDir, recordingFileName);
-      const responseAudioPath = await this.openaiService.processConversation(recordingPath);
-      //const responseAudioPath = await this.openaiService.processConversationExample();
+      //const responseAudioPath = await this.openaiService.processConversation(recordingPath);
+      const responseAudioPath = await this.openaiService.processConversationExample();
       
       // Reproducir la respuesta generada
       await this.ariService.playAudio(channelId, responseAudioPath);

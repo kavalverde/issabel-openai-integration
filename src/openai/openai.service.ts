@@ -167,7 +167,7 @@ export class OpenaiService {
         messages: [
           {
             role: 'system',
-            content: 'Eres un asistente telefónico amable y eficiente de la empresa Node Analytics. que ayuda a los clientes con sus consultas. Proporciona respuestas claras y concisas.'
+            content: 'Eres un asistente telefónico amable y eficiente de la empresa Node Analytics que ayuda a los clientes con sus consultas. Presentate y ofrece ayuda para comenzar la conversación.'
           },
           {
             role: 'user',
