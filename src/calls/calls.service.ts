@@ -108,7 +108,7 @@ export class CallsService implements OnModuleInit, CallSessionRepository {
       
       // Reproducir mensaje de bienvenida
       await this.ariService.playAudio(channelId, 'hello-world');
-     /*  
+      
       // Iniciar grabación
       const recordingFileName = await this.ariService.recordCall(channelId);
       this.addRecording(channelId, recordingFileName);
@@ -117,12 +117,11 @@ export class CallsService implements OnModuleInit, CallSessionRepository {
       await new Promise(resolve => setTimeout(resolve, 5000));
       
       // Procesar la grabación con OpenAI
-      const recordingPath = path.join(this.recordingsDir, recordingFileName); */
-      //const responseAudioPath = await this.openaiService.processConversation(recordingPath);
-      const responseAudioPath = await this.openaiService.processConversationExample();
+      const recordingPath = path.join(this.recordingsDir, recordingFileName);
+      const responseAudioPath = await this.openaiService.processConversation(recordingPath);
       
       // Reproducir la respuesta generada
-      await this.ariService.playAudio(channelId, responseAudioPath);
+      await this.ariService.playAudioWithAsterisk(channelId, responseAudioPath);
       
       // Finalizar la llamada
       await this.ariService.hangupCall(channelId);
