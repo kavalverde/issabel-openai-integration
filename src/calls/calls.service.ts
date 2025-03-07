@@ -1,7 +1,10 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { AriService } from '../ari/ari.service';
 import { OpenaiService } from '../openai/openai.service';
-import { CallSession, CallSessionRepository } from './interfaces/call.interface';
+import {
+  CallSession,
+  CallSessionRepository,
+} from './interfaces/call.interface';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -25,7 +28,11 @@ export class CallsService implements OnModuleInit, CallSessionRepository {
     // Suscribirse a eventos de llamadas desde ARI
     this.ariService.callEvents.subscribe(async (event) => {
       if (event.type === 'call_start' && event.channel) {
-        await this.handleIncomingCall(event.channel.id, event.channel.caller.name, event.channel.caller.number);
+        await this.handleIncomingCall(
+          event.channel.id,
+          event.channel.caller.name,
+          event.channel.caller.number,
+        );
       } else if (event.type === 'call_end' && event.channel) {
         await this.handleCallEnd(event.channel.id);
       }
@@ -33,7 +40,11 @@ export class CallsService implements OnModuleInit, CallSessionRepository {
   }
 
   // Implementación del repositorio de sesiones
-  createSession(channelId: string, callerId: string, callerNumber: string): CallSession {
+  createSession(
+    channelId: string,
+    callerId: string,
+    callerNumber: string,
+  ): CallSession {
     const session: CallSession = {
       channelId,
       callerId,
@@ -43,7 +54,7 @@ export class CallsService implements OnModuleInit, CallSessionRepository {
       transcriptions: [],
       responses: [],
     };
-    
+
     this.sessions.set(channelId, session);
     return session;
   }
@@ -57,7 +68,7 @@ export class CallsService implements OnModuleInit, CallSessionRepository {
     if (!session) {
       throw new Error(`No se encontró la sesión para el canal ${channelId}`);
     }
-    
+
     const updatedSession = { ...session, ...updates };
     this.sessions.set(channelId, updatedSession);
     return updatedSession;
@@ -96,20 +107,27 @@ export class CallsService implements OnModuleInit, CallSessionRepository {
   }
 
   // Métodos de manejo de llamadas
-  async handleIncomingCall(channelId: string, callerId: string, callerNumber: string): Promise<void> {
+  async handleIncomingCall(
+    channelId: string,
+    callerId: string,
+    callerNumber: string,
+  ): Promise<void> {
     try {
-      this.logger.log(`Manejando llamada entrante: ${channelId} de ${callerNumber}`);
-      
+      this.logger.log(
+        `Manejando llamada entrante: ${channelId} de ${callerNumber}`,
+      );
+
       // Crear una nueva sesión de llamada
       this.createSession(channelId, callerId, callerNumber);
-      
+
       // Responder la llamada
       await this.ariService.answerCall(channelId);
-      
+
       // Reproducir mensaje de bienvenida
-      await this.ariService.playAudio(channelId, 'custom/tts-1741284202139');
-      
-     /*  // Iniciar grabación
+      await this.ariService.playAudio(channelId, 'custom/tts-1741305050975');
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await this.ariService.playAudio(channelId, 'custom/tts-1741305791105');
+      /*  // Iniciar grabación
       const recordingFileName = await this.ariService.recordCall(channelId);
       this.addRecording(channelId, recordingFileName);
       
@@ -119,14 +137,13 @@ export class CallsService implements OnModuleInit, CallSessionRepository {
       // Procesar la grabación con OpenAI
       const recordingPath = path.join(this.recordingsDir, recordingFileName); */
       //const responseAudioPath = await this.openaiService.processConversation(recordingPath);
-      const responseAudioPath = await this.openaiService.processConversationExample();
-      
+      //const responseAudioPath = await this.openaiService.processConversationExample();
+
       // Reproducir la respuesta generada
-      await this.ariService.playAudio(channelId, responseAudioPath);
-      
+      //await this.ariService.playAudio(channelId, responseAudioPath);
+
       // Finalizar la llamada
       await this.ariService.hangupCall(channelId);
-      
     } catch (error) {
       this.logger.error(`Error al manejar llamada entrante: ${error.message}`);
       try {
@@ -145,14 +162,15 @@ export class CallsService implements OnModuleInit, CallSessionRepository {
 
   // Método para obtener todas las sesiones activas
   getAllActiveSessions(): CallSession[] {
-    return Array.from(this.sessions.values())
-      .filter(session => !session.endTime);
+    return Array.from(this.sessions.values()).filter(
+      (session) => !session.endTime,
+    );
   }
 
   // Método para obtener el historial de llamadas
   getCallHistory(): CallSession[] {
     return Array.from(this.sessions.values())
-      .filter(session => session.endTime)
+      .filter((session) => session.endTime)
       .sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
   }
 }
