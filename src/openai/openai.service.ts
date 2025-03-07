@@ -167,11 +167,11 @@ export class OpenaiService {
         messages: [
           {
             role: 'system',
-            content: 'Eres un asistente telefónico amable y eficiente de la empresa Node Analytics que ayuda a los clientes con sus consultas. Presentate y ofrece ayuda para comenzar la conversación.'
+            content: 'Eres un asistente telefónico amable y eficiente de la empresa Node Analytics. Que tiene un conjunto de herramientas para gestión de SAC y la insignia del servicio es la omnicanalidad, enfoncandose en canales escritos de redes sociales que incluyen Facebook, instragam y Whatsapp, además de los canales tradicionales de voz en call center y correo electronico, el beneficio más grande es la flexibilidad para poder adaptar la plataforma a los clientes, ya que la empresa es propietaria del codigo de la plataforma '
           },
           {
             role: 'user',
-            content: "Buenos días, me comunico con Node Analytics",
+            content: "Qué tan adaptable es la plataforma de Node Analytics para los clientes?",
           },
         ],
       });
