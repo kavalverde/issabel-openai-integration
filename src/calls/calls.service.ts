@@ -124,10 +124,14 @@ export class CallsService implements OnModuleInit, CallSessionRepository {
       await this.ariService.answerCall(channelId);
 
       // Reproducir mensaje de bienvenida
-     /*  await this.ariService.playAudio(channelId, 'custom/tts-1741305050975');
+      await this.ariService.playAudio(channelId, 'custom/tts-1741305050975');
       await new Promise((resolve) => setTimeout(resolve, 7000));
-      await this.ariService.playAudio(channelId, 'custom/tts-1741305791105'); */
-      
+      await this.ariService.playAudio(channelId, 'custom/tts-1741361871826');
+      await new Promise((resolve) => setTimeout(resolve, 7000));
+      await this.ariService.playAudio(channelId, 'custom/tts-1741362254708');
+      await new Promise((resolve) => setTimeout(resolve, 7000));
+      await this.ariService.playAudio(channelId, 'custom/tts-1741362459731');
+
       /*  // Iniciar grabación
       const recordingFileName = await this.ariService.recordCall(channelId);
       this.addRecording(channelId, recordingFileName);
@@ -138,7 +142,7 @@ export class CallsService implements OnModuleInit, CallSessionRepository {
       // Procesar la grabación con OpenAI
       const recordingPath = path.join(this.recordingsDir, recordingFileName); */
       //const responseAudioPath = await this.openaiService.processConversation(recordingPath);
-      const responseAudioPath = await this.openaiService.processConversationExample();
+      //const responseAudioPath = await this.openaiService.processConversationExample();
 
       // Reproducir la respuesta generada
       //await this.ariService.playAudio(channelId, responseAudioPath);
