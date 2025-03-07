@@ -125,7 +125,7 @@ export class CallsService implements OnModuleInit, CallSessionRepository {
 
       // Reproducir mensaje de bienvenida
       await this.ariService.playAudio(channelId, 'custom/tts-1741305050975');
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, 7000));
       await this.ariService.playAudio(channelId, 'custom/tts-1741305791105');
       /*  // Iniciar grabación
       const recordingFileName = await this.ariService.recordCall(channelId);
