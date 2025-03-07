@@ -181,7 +181,7 @@ export class OpenaiService {
           },
           {
             role: 'user',
-            content: 'Estoy interesado en los productos de Node Analytics, ¿puedes brindarme más información?',
+            content: 'Te agradezco por tu tiempo, pero no tengo más preguntas.',
           },
         ],
       });
