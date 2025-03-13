@@ -111,26 +111,68 @@ export class AriService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Método para grabar audio de la llamada
-  async recordCall(channelId: string, format: string = 'wav'): Promise<string> {
-    try {
-      const fileName = `call-${channelId}-${Date.now()}.${format}`;
-      const _recording = await this.client.channels.record({
-        channelId,
-        name: fileName,
-        format,
-        beep: false,
-        maxDurationSeconds: 300, // 5 minutos máximo
-        ifExists: 'overwrite'
-        // Removing the destination parameter to use Asterisk's default path
+// Enhanced record call method with better error handling and simpler approach
+async recordCall(channelId: string, format: string = 'wav'): Promise<string> {
+  try {
+    // Use a simple filename without special characters
+    const simpleId = channelId.replace(/\./g, '-');
+    const fileName = `call-${simpleId}-${Date.now()}`;
+    
+    // Log all recording parameters for debugging
+    this.logger.log(`Starting recording with parameters: 
+      channelId: ${channelId}
+      name: ${fileName}
+      format: ${format}
+    `);
+    
+    // Create a recording with minimal parameters
+    const recording = await this.client.channels.record({
+      channelId: channelId,
+      name: fileName,
+      format: format
+    });
+    
+    // Return full information about the recording for debugging
+    this.logger.log(`Recording started: ${JSON.stringify(recording)}`);
+    
+    // Wait for the recording to start before returning
+    return new Promise((resolve, reject) => {
+      // Set a reasonable timeout
+      const timeout = setTimeout(() => {
+        this.logger.error('Recording start timeout');
+        reject(new Error('Recording start timeout'));
+      }, 5000);
+      
+      // Listen for recording events
+      recording.once('RecordingStarted', (event) => {
+        clearTimeout(timeout);
+        this.logger.log(`Recording started event: ${JSON.stringify(event)}`);
+        resolve(fileName + '.' + format);
       });
-  
-      this.logger.log(`Iniciando grabación: ${fileName}`);
-      return fileName;
-    } catch (error) {
-      this.logger.error(`Error al grabar llamada: ${JSON.stringify(error)}`);
-      throw error;
+      
+      recording.once('RecordingFailed', (event) => {
+        clearTimeout(timeout);
+        this.logger.error(`Recording failed event: ${JSON.stringify(event)}`);
+        reject(new Error(`Recording failed: ${JSON.stringify(event)}`));
+      });
+    });
+  } catch (error) {
+    // Detailed error logging
+    this.logger.error(`Error starting recording: ${error.message}`);
+    if (error.stack) {
+      this.logger.error(`Stack trace: ${error.stack}`);
     }
+    
+    // Log the full error object for inspection
+    try {
+      this.logger.error(`Full error object: ${JSON.stringify(error)}`);
+    } catch (e) {
+      this.logger.error(`Error serializing error object: ${e.message}`);
+    }
+    
+    throw error;
   }
+}
 
   // Método para reproducir audio en el canal
   async playAudio(channelId: string, audioFile: string): Promise<void> {
