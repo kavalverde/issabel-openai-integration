@@ -114,17 +114,16 @@ export class AriService implements OnModuleInit, OnModuleDestroy {
   async recordCall(channelId: string, format: string = 'wav'): Promise<string> {
     try {
       const fileName = `call-${channelId}-${Date.now()}.${format}`;
-      const destination = `/var/spool/asterisk/monitor/${fileName}`;
-      const recording = await this.client.channels.record({
+      const _recording = await this.client.channels.record({
         channelId,
         name: fileName,
         format,
         beep: false,
         maxDurationSeconds: 300, // 5 minutos máximo
-        ifExists: 'overwrite',
-        destination: destination
+        ifExists: 'overwrite'
+        // Removing the destination parameter to use Asterisk's default path
       });
-
+  
       this.logger.log(`Iniciando grabación: ${fileName}`);
       return fileName;
     } catch (error) {
