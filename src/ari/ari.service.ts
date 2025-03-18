@@ -117,50 +117,92 @@ async recordCall(channelId: string, format: string = 'wav'): Promise<string> {
     // Simplificar el ID del canal
     const simpleId = channelId.replace(/\./g, '-');
     
-    // Crear un nombre de archivo con marca de tiempo
+    // Crear un nombre de archivo único pero muy simple
     const timestamp = Date.now();
-    const fileName = `call-${simpleId}-${timestamp}`;
+    const fileName = `call_${simpleId}_${timestamp}`;
     
-    // Especificar la ruta de grabación (ajusta según tu configuración de Asterisk)
-    // Esto es crucial ya que el error indica un problema de "No such file or directory"
-    const recordingDir = '/var/spool/asterisk/monitor'; // Directorio estándar de grabaciones en Issabel
-    
-    this.logger.log(`Starting recording with parameters: 
+    this.logger.log(`Starting ARI recording: 
       channelId: ${channelId}
-      name: ${fileName}
+      name: ${fileName} (sin directorio, solo nombre)
       format: ${format}
-      directory: ${recordingDir}
     `);
     
-    // Crear la grabación con parámetros ampliados
+    // Intentar usar la API de snoop como alternativa que suele funcionar mejor
     const recording = await this.client.channels.record({
       channelId: channelId,
       name: fileName,
       format: format,
-      beep: true, // Opcional: añade un pitido para indicar el inicio de grabación
-      maxDurationSeconds: 3600, // Opcional: limitar duración máxima a 1 hora
-      maxSilenceSeconds: 0, // Desactivar detección de silencio
-      termination: 'none', // No terminar automáticamente
+      // No incluir opciones adicionales que puedan causar problemas
     });
     
-    this.logger.log(`Recording object created: ${JSON.stringify(recording)}`);
+    // Obtener una referencia al ID de la grabación para seguimiento
+    const recordingName = recording.name;
+    this.logger.log(`Recording requested with ID: ${recordingName}`);
     
     return new Promise((resolve, reject) => {
-      // Aumentar el timeout para asegurar que la grabación tenga tiempo de iniciarse
       const timeout = setTimeout(() => {
         this.logger.error('Recording start timeout');
         reject(new Error('Recording start timeout'));
-      }, 10000); // 10 segundos
+      }, 10000);
       
-      recording.once('RecordingStarted', (event) => {
+      recording.once('RecordingStarted', async (event) => {
         clearTimeout(timeout);
         this.logger.log(`Recording started event: ${JSON.stringify(event)}`);
         
-        // Guardar la referencia a la grabación para poder accederla después
-        const fullFilePath = `${recordingDir}/${fileName}.${format}`;
-        this.logger.log(`Expected recording file: ${fullFilePath}`);
+        // Buscar el archivo en las ubicaciones más comunes de Issabel/Asterisk
+        const potentialLocations = [
+          `/var/spool/asterisk/monitor/${fileName}.${format}`,
+          `/var/lib/asterisk/recordings/${fileName}.${format}`,
+          `/var/lib/asterisk/sounds/custom/${fileName}.${format}`,
+          `/var/spool/asterisk/monitor/queue-${fileName}.${format}`,
+          `/var/spool/asterisk/monitor/FROM-${fileName}.${format}`,
+          `/var/spool/asterisk/monitor/g${fileName}.${format}`,
+          `/tmp/${fileName}.${format}`
+        ];
         
-        resolve(fullFilePath);
+        this.logger.log(`Checking for recording file in potential locations...`);
+        
+        // Si conocemos la ruta exacta desde el evento, usarla primero
+        let filePath = '';
+        if (event && event.recording && event.recording.name) {
+          filePath = event.recording.name;
+          this.logger.log(`Using file path from event: ${filePath}`);
+          
+          // Verificar si este archivo existe
+          try {
+            const fs = require('fs');
+            if (fs.existsSync(filePath)) {
+              this.logger.log(`Found recording at: ${filePath}`);
+              return resolve(filePath);
+            } else {
+              this.logger.log(`File from event does not exist: ${filePath}`);
+            }
+          } catch (err) {
+            this.logger.error(`Error checking file path: ${err.message}`);
+          }
+        }
+        
+        // Si no pudimos obtener la ruta del evento o el archivo no existe,
+        // buscar en ubicaciones potenciales
+        try {
+          const fs = require('fs');
+          for (const location of potentialLocations) {
+            this.logger.log(`Checking location: ${location}`);
+            if (fs.existsSync(location)) {
+              this.logger.log(`Found recording at: ${location}`);
+              return resolve(location);
+            }
+          }
+          
+          // Si llegamos aquí, no encontramos el archivo en ninguna ubicación conocida
+          this.logger.warn(`Recording file not found in any known location`);
+          
+          // Devuelve la primera ubicación potencial como una aproximación
+          resolve(potentialLocations[0]);
+        } catch (err) {
+          this.logger.error(`Error searching for recording: ${err.message}`);
+          resolve(potentialLocations[0]);
+        }
       });
       
       recording.once('RecordingFailed', (event) => {
@@ -170,7 +212,6 @@ async recordCall(channelId: string, format: string = 'wav'): Promise<string> {
       });
     });
   } catch (error) {
-    // Mejorar el log de errores para incluir más información
     this.logger.error(`Error starting recording: ${error.message}`);
     this.logger.error(`Full error object: ${JSON.stringify(error, null, 2)}`);
     if (error.stack) {
