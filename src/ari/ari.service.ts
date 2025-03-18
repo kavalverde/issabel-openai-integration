@@ -114,30 +114,32 @@ export class AriService implements OnModuleInit, OnModuleDestroy {
 // Enhanced record call method with better error handling and simpler approach
 async recordCall(channelId: string, format: string = 'wav'): Promise<string> {
   try {
-    // Simplificar el ID del canal
-    const simpleId = channelId.replace(/\./g, '-');
+    // Simplificar el ID del canal - usar sólo alfanuméricos
+    const simpleId = channelId.replace(/[^a-zA-Z0-9]/g, '');
     
-    // Crear un nombre de archivo único pero muy simple
+    // Crear un nombre de archivo simple, SIN RUTAS, SIN GUIONES
+    // Basado en la solución del foro: https://asterisk.voicemeup.com/viewtopic.php?p=121782
     const timestamp = Date.now();
-    const fileName = `call_${simpleId}_${timestamp}`;
+    const fileName = `call${simpleId}${timestamp}`;
     
-    this.logger.log(`Starting ARI recording: 
+    this.logger.log(`Starting recording with SIMPLE filename: 
       channelId: ${channelId}
-      name: ${fileName} (sin directorio, solo nombre)
+      name: ${fileName}
       format: ${format}
     `);
     
-    // Intentar usar la API de snoop como alternativa que suele funcionar mejor
+    // Usar los parámetros más simples posibles - CLAVE DEL FORO
     const recording = await this.client.channels.record({
       channelId: channelId,
       name: fileName,
-      format: format,
-      // No incluir opciones adicionales que puedan causar problemas
+      format: format
     });
     
-    // Obtener una referencia al ID de la grabación para seguimiento
-    const recordingName = recording.name;
-    this.logger.log(`Recording requested with ID: ${recordingName}`);
+    this.logger.log(`Recording request sent: ${JSON.stringify(recording)}`);
+    
+    // La ruta donde Asterisk guardará el archivo (basado en la configuración predeterminada)
+    // Según el foro, esto debería estar en /var/lib/asterisk/recordings/
+    const expectedPath = `/var/lib/asterisk/recordings/${fileName}.${format}`;
     
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -145,64 +147,23 @@ async recordCall(channelId: string, format: string = 'wav'): Promise<string> {
         reject(new Error('Recording start timeout'));
       }, 10000);
       
-      recording.once('RecordingStarted', async (event) => {
+      recording.once('RecordingStarted', (event) => {
         clearTimeout(timeout);
         this.logger.log(`Recording started event: ${JSON.stringify(event)}`);
         
-        // Buscar el archivo en las ubicaciones más comunes de Issabel/Asterisk
-        const potentialLocations = [
-          `/var/spool/asterisk/monitor/${fileName}.${format}`,
-          `/var/lib/asterisk/recordings/${fileName}.${format}`,
-          `/var/lib/asterisk/sounds/custom/${fileName}.${format}`,
-          `/var/spool/asterisk/monitor/queue-${fileName}.${format}`,
-          `/var/spool/asterisk/monitor/FROM-${fileName}.${format}`,
-          `/var/spool/asterisk/monitor/g${fileName}.${format}`,
-          `/tmp/${fileName}.${format}`
-        ];
+        // Intentar obtener la ruta real del archivo del evento
+        let recordingPath = '';
         
-        this.logger.log(`Checking for recording file in potential locations...`);
-        
-        // Si conocemos la ruta exacta desde el evento, usarla primero
-        let filePath = '';
         if (event && event.recording && event.recording.name) {
-          filePath = event.recording.name;
-          this.logger.log(`Using file path from event: ${filePath}`);
-          
-          // Verificar si este archivo existe
-          try {
-            const fs = require('fs');
-            if (fs.existsSync(filePath)) {
-              this.logger.log(`Found recording at: ${filePath}`);
-              return resolve(filePath);
-            } else {
-              this.logger.log(`File from event does not exist: ${filePath}`);
-            }
-          } catch (err) {
-            this.logger.error(`Error checking file path: ${err.message}`);
-          }
+          recordingPath = event.recording.name;
+          this.logger.log(`Recording path from event: ${recordingPath}`);
+        } else {
+          // Si no podemos obtener la ruta del evento, usar el valor esperado
+          recordingPath = expectedPath;
+          this.logger.log(`Using expected recording path: ${recordingPath}`);
         }
         
-        // Si no pudimos obtener la ruta del evento o el archivo no existe,
-        // buscar en ubicaciones potenciales
-        try {
-          const fs = require('fs');
-          for (const location of potentialLocations) {
-            this.logger.log(`Checking location: ${location}`);
-            if (fs.existsSync(location)) {
-              this.logger.log(`Found recording at: ${location}`);
-              return resolve(location);
-            }
-          }
-          
-          // Si llegamos aquí, no encontramos el archivo en ninguna ubicación conocida
-          this.logger.warn(`Recording file not found in any known location`);
-          
-          // Devuelve la primera ubicación potencial como una aproximación
-          resolve(potentialLocations[0]);
-        } catch (err) {
-          this.logger.error(`Error searching for recording: ${err.message}`);
-          resolve(potentialLocations[0]);
-        }
+        resolve(recordingPath);
       });
       
       recording.once('RecordingFailed', (event) => {
@@ -220,7 +181,6 @@ async recordCall(channelId: string, format: string = 'wav'): Promise<string> {
     throw error;
   }
 }
-
   // Método para reproducir audio en el canal
   async playAudio(channelId: string, audioFile: string): Promise<void> {
     try {
