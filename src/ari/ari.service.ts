@@ -114,40 +114,53 @@ export class AriService implements OnModuleInit, OnModuleDestroy {
 // Enhanced record call method with better error handling and simpler approach
 async recordCall(channelId: string, format: string = 'wav'): Promise<string> {
   try {
-    // Use a simple filename without special characters
+    // Simplificar el ID del canal
     const simpleId = channelId.replace(/\./g, '-');
-    const fileName = `call-${simpleId}-${Date.now()}`;
     
-    // Log all recording parameters for debugging
+    // Crear un nombre de archivo con marca de tiempo
+    const timestamp = Date.now();
+    const fileName = `call-${simpleId}-${timestamp}`;
+    
+    // Especificar la ruta de grabación (ajusta según tu configuración de Asterisk)
+    // Esto es crucial ya que el error indica un problema de "No such file or directory"
+    const recordingDir = '/var/spool/asterisk/monitor'; // Directorio estándar de grabaciones en Issabel
+    
     this.logger.log(`Starting recording with parameters: 
       channelId: ${channelId}
       name: ${fileName}
       format: ${format}
+      directory: ${recordingDir}
     `);
     
-    // Create a recording with minimal parameters
+    // Crear la grabación con parámetros ampliados
     const recording = await this.client.channels.record({
       channelId: channelId,
       name: fileName,
-      format: format
+      format: format,
+      beep: true, // Opcional: añade un pitido para indicar el inicio de grabación
+      maxDurationSeconds: 3600, // Opcional: limitar duración máxima a 1 hora
+      maxSilenceSeconds: 0, // Desactivar detección de silencio
+      termination: 'none', // No terminar automáticamente
     });
     
-    // Return full information about the recording for debugging
-    this.logger.log(`Recording started: ${JSON.stringify(recording)}`);
+    this.logger.log(`Recording object created: ${JSON.stringify(recording)}`);
     
-    // Wait for the recording to start before returning
     return new Promise((resolve, reject) => {
-      // Set a reasonable timeout
+      // Aumentar el timeout para asegurar que la grabación tenga tiempo de iniciarse
       const timeout = setTimeout(() => {
         this.logger.error('Recording start timeout');
         reject(new Error('Recording start timeout'));
-      }, 5000);
+      }, 10000); // 10 segundos
       
-      // Listen for recording events
       recording.once('RecordingStarted', (event) => {
         clearTimeout(timeout);
         this.logger.log(`Recording started event: ${JSON.stringify(event)}`);
-        resolve(fileName + '.' + format);
+        
+        // Guardar la referencia a la grabación para poder accederla después
+        const fullFilePath = `${recordingDir}/${fileName}.${format}`;
+        this.logger.log(`Expected recording file: ${fullFilePath}`);
+        
+        resolve(fullFilePath);
       });
       
       recording.once('RecordingFailed', (event) => {
@@ -157,19 +170,12 @@ async recordCall(channelId: string, format: string = 'wav'): Promise<string> {
       });
     });
   } catch (error) {
-    // Detailed error logging
+    // Mejorar el log de errores para incluir más información
     this.logger.error(`Error starting recording: ${error.message}`);
+    this.logger.error(`Full error object: ${JSON.stringify(error, null, 2)}`);
     if (error.stack) {
       this.logger.error(`Stack trace: ${error.stack}`);
     }
-    
-    // Log the full error object for inspection
-    try {
-      this.logger.error(`Full error object: ${JSON.stringify(error)}`);
-    } catch (e) {
-      this.logger.error(`Error serializing error object: ${e.message}`);
-    }
-    
     throw error;
   }
 }
